@@ -44,7 +44,7 @@ public class Perceptron {
             indexOfClass.add(Integer.parseInt(line));
         }
                       
-        int epoch = 5;
+        int epoch = 10;
                 
         filename = "trainingimages";
         file = new File(filename);
@@ -116,8 +116,8 @@ public class Perceptron {
             }
             values.add(value);
         }   
-
-        double max = -1;
+        //System.out.println("Values :" + values);
+        double max = values.get(0);
         int cls = 0;
         for(int i = 0; i < 10; i++) {
             
@@ -126,7 +126,9 @@ public class Perceptron {
                 cls = i;
             }
         }
-
+        //System.out.println("Actual CLass :" + correctClass);
+        //System.out.println("Predicted CLass :" + cls);
+        
         if(correctClass != cls) {            
             ArrayList<Double> weightVector =  mweightVectorMap.get(correctClass);
 
@@ -174,10 +176,9 @@ public class Perceptron {
         ArrayList<Double> randArr;
         for(int i =0; i < 10; i ++) {            
             randArr = new ArrayList<>();
+            double x = ran.nextInt(10);
             
-            
-            for(int j =0; j < 784; j ++) {
-                double x = ran.nextInt(100);
+            for(int j =0; j < 784; j ++) {                
                 randArr.add(x);
             }
             mweightVectorMap.put(i, randArr);
@@ -188,18 +189,15 @@ public class Perceptron {
     static ArrayList<Integer> convertToList(ArrayList<char[]> linesToProcess) {
         ArrayList<Integer> intArrayList = new ArrayList<>();
         int lineLength = linesToProcess.get(0).length;
-        for(int ctr = 0; ctr < lineLength; ctr++){
-            int[] intArr = new int[lineLength];
-            
-            for(int x = 0; x < linesToProcess.size(); x++){ 
-                char[] currLine = linesToProcess.get(x);
+        for(int ctr = 0; ctr < lineLength; ctr++){            
+            char[] currLine = linesToProcess.get(ctr);
+            for(int x = 0; x < linesToProcess.size(); x++){                 
                 if((currLine[x] == ' ') || currLine[x] == 0){
                     intArrayList.add(0);
                 }
                 else {
                     intArrayList.add(1);
-                }
-                
+                }                
             }
             
         }
