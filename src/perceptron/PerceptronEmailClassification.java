@@ -24,14 +24,28 @@ import java.util.Set;
  */
 public class PerceptronEmailClassification {    
     static Map<Integer, ArrayList<Double>> mweightVectorMap = new HashMap<>();
+    static Map<Integer, ArrayList<Integer>> confusionMap = new HashMap<>();
     static Set<String> mUniqueDictSet = new HashSet<>();
     static int mTValue = 0;
     static double mAlphaFactor = 1;
     static int mAccuracy = 0;
+    static int mNumOfClasses = 8;
     
-    public static void main(String[] args) throws FileNotFoundException, IOException {
-                
+    public static void main(String[] args) throws FileNotFoundException, IOException {             
         String filename = "8category.training.txt";
+        computeUniqueDict(filename);                
+        initializeVectorMaps();
+        
+        int epoch = 1;
+        computeTrainingModel(filename, epoch);
+        
+        filename = "8category.testing.txt";
+        applyOnTestData(filename);
+        computeConfusionMatrix();        
+    
+    }
+    
+    static void computeUniqueDict(String filename) throws FileNotFoundException, IOException {
         File file = new File(filename);
         BufferedReader br = new BufferedReader(new FileReader(file));
         
@@ -46,8 +60,10 @@ public class PerceptronEmailClassification {
                 }                
             }                                        
          }
-        
-        initializeVectorMaps();
+    }
+    
+    static void computeTrainingModel(String filename, int epoch) throws FileNotFoundException, IOException {
+        File file = new File(filename);
         
         ArrayList<String> list = new ArrayList<>(mUniqueDictSet);
         Collections.sort(list);
@@ -55,11 +71,11 @@ public class PerceptronEmailClassification {
         ArrayList<String> wordsInDOc = new ArrayList<>();
         ArrayList<Integer> vectorOfEachDoc = new ArrayList<>();                
         
-        int correctClass = 0;
-        int epoch = 20;
+        int correctClass = 0;        
+        String line = null;
         
         for(int i = 0; i < epoch; i++) {
-            br = new BufferedReader(new FileReader(file));
+            BufferedReader br = new BufferedReader(new FileReader(file));
             while ((line = br.readLine()) != null) {
                 vectorOfEachDoc = new ArrayList<>();
                 wordsInDOc.clear();
@@ -80,13 +96,38 @@ public class PerceptronEmailClassification {
                 processClass(vectorOfEachDoc, correctClass);
             }        
         }
+    }
+    
+    
+    static void computeConfusionMatrix() {
+        ArrayList<Integer> totalValMat  = new ArrayList<>();
+        for(int index = 0 ; index < confusionMap.size(); index++) {
+            int val = 0;
+            for(int col = 0 ; col < confusionMap.size(); col++) {
+                val+= confusionMap.get(index).get(col);                
+            }            
+            totalValMat.add(val);
+            //System.out.println("Confusion Matrix :" + confusionMap.get(index));            
+        }
         
+        for(int index = 0 ; index < confusionMap.size(); index++) {
+            for(int col = 0 ; col < confusionMap.size(); col++) {
+                System.out.print(String.format("%6.2f ",((double)(confusionMap.get(index).get(col)) / totalValMat.get(index) * 100)));            
+            }
+            System.out.println(" ");
+        }    
+    }
+    
+    static void applyOnTestData(String filename) throws IOException {
+        //For testing
+        filename = filename;
+        File file = new File(filename);
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        String line = null;
+        ArrayList<String> wordsInDOc = new ArrayList<>();
+        ArrayList<Integer> vectorOfEachDoc = new ArrayList<>();                
+        int correctClass;
         
-          //For testing
-        filename = "8category.testing.txt";
-        file = new File(filename);
-        br = new BufferedReader(new FileReader(file));
-                                
         int totalTestEntries = 0;
         while ((line = br.readLine()) != null) {                       
             vectorOfEachDoc = new ArrayList<>();
@@ -108,16 +149,16 @@ public class PerceptronEmailClassification {
             checkAccuracy(vectorOfEachDoc, correctClass);
             
             totalTestEntries++;            
-        }
-        
+        }        
         
         System.out.println("The Correctly classified classes are "+ mAccuracy); 
         System.out.println("The accuracy is "+ mAccuracy * 1.0/totalTestEntries);
+    
     }
     
     static void checkAccuracy(ArrayList<Integer> linesToProcess, int correctClass) {
         ArrayList<Double> values = new ArrayList<>();
-        for(int key = 0; key < 10; key++) {
+        for(int key = 0; key < mNumOfClasses; key++) {
             ArrayList<Double> weightVector =  mweightVectorMap.get(key);            
             double value = 0;
             
@@ -128,16 +169,30 @@ public class PerceptronEmailClassification {
         }   
 
         double max = -1;int cls = 0;
-        for(int i = 0; i < 10; i++) {            
+        for(int i = 0; i < mNumOfClasses; i++) {            
             if(values.get(i) > max) {
                 max = values.get(i);
                 cls = i;
             }
         }
-
+               
         if(correctClass == cls) {
             mAccuracy++;
+        }        
+        
+        if(confusionMap.containsKey(correctClass)) {                    
+            ArrayList<Integer> confusionVals =confusionMap.get(correctClass);
+            confusionVals.set(cls, confusionVals.get(cls) + 1);
+            confusionMap.put(correctClass, confusionVals);
         }
+        else {
+            ArrayList<Integer> confusionVals = new ArrayList<>(mNumOfClasses);
+            for(int m = 0 ; m < mNumOfClasses; m++) 
+               confusionVals.add(0);
+
+            confusionVals.set(cls, 1);
+            confusionMap.put(correctClass, confusionVals);
+        }                         
         
     }
     
@@ -146,7 +201,7 @@ public class PerceptronEmailClassification {
         mAlphaFactor =  (1000 * 1.0/ (1000 + mTValue));
         
         ArrayList<Double> values = new ArrayList<>();
-        for(int key = 0; key < 10; key++) {
+        for(int key = 0; key < mNumOfClasses; key++) {
             ArrayList<Double> weightVector =  mweightVectorMap.get(key);
             int bias = 1;                
             double value = 0;
@@ -159,7 +214,7 @@ public class PerceptronEmailClassification {
         //System.out.println("Values :" + values);
         double max = values.get(0);
         int cls = 0;
-        for(int i = 0; i < 10; i++) {            
+        for(int i = 0; i < mNumOfClasses; i++) {            
             if(values.get(i) > max) {
                 max = values.get(i);
                 cls = i;
@@ -187,9 +242,9 @@ public class PerceptronEmailClassification {
     static void initializeVectorMaps() {
         Random ran = new Random();
         ArrayList<Double> randArr;
-        for(int i =0; i < 10; i ++) {            
+        for(int i =0; i < mNumOfClasses; i ++) {            
             randArr = new ArrayList<>();
-            double x = ran.nextInt(10);
+            double x = ran.nextInt(5);
             
             for(int j =0; j < mUniqueDictSet.size(); j ++) {                
                 randArr.add(x);
