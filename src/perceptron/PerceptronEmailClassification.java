@@ -23,29 +23,35 @@ import java.util.Set;
  * @author panindra
  */
 public class PerceptronEmailClassification {    
-    static Map<Integer, ArrayList<Double>> mweightVectorMap = new HashMap<>();
-    static Map<Integer, ArrayList<Integer>> confusionMap = new HashMap<>();
-    static Set<String> mUniqueDictSet = new HashSet<>();
-    static int mTValue = 0;
-    static double mAlphaFactor = 1;
-    static int mAccuracy = 0;
-    static int mNumOfClasses = 8;
+    Map<Integer, ArrayList<Double>> mweightVectorMap = new HashMap<>();
+    Map<Integer, ArrayList<Integer>> mConfusionMap = new HashMap<>();
+    Set<String> mUniqueDictSet = new HashSet<>();
+    int mTValue = 0;
+    double mAlphaFactor = 1;
+    int mAccuracy = 0;
+    int mNumOfClasses = 8;
     
-    public static void main(String[] args) throws FileNotFoundException, IOException {             
+    
+    
+    public void computeEmailClassification(int epoch) throws IOException {
         String filename = "8category.training.txt";
         computeUniqueDict(filename);                
         initializeVectorMaps();
-        
-        int epoch = 1;
+                
         computeTrainingModel(filename, epoch);
         
+        applyOnData(filename);
+        
+        mTValue = 0;
+        mAccuracy = 0;
+        mConfusionMap.clear();
+                
         filename = "8category.testing.txt";
-        applyOnTestData(filename);
+        applyOnData(filename);
         computeConfusionMatrix();        
-    
     }
     
-    static void computeUniqueDict(String filename) throws FileNotFoundException, IOException {
+    void computeUniqueDict(String filename) throws FileNotFoundException, IOException {
         File file = new File(filename);
         BufferedReader br = new BufferedReader(new FileReader(file));
         
@@ -62,7 +68,7 @@ public class PerceptronEmailClassification {
          }
     }
     
-    static void computeTrainingModel(String filename, int epoch) throws FileNotFoundException, IOException {
+    void computeTrainingModel(String filename, int epoch) throws FileNotFoundException, IOException {
         File file = new File(filename);
         
         ArrayList<String> list = new ArrayList<>(mUniqueDictSet);
@@ -97,28 +103,27 @@ public class PerceptronEmailClassification {
             }        
         }
     }
-    
-    
-    static void computeConfusionMatrix() {
+        
+    void computeConfusionMatrix() {
         ArrayList<Integer> totalValMat  = new ArrayList<>();
-        for(int index = 0 ; index < confusionMap.size(); index++) {
+        for(int index = 0 ; index < mConfusionMap.size(); index++) {
             int val = 0;
-            for(int col = 0 ; col < confusionMap.size(); col++) {
-                val+= confusionMap.get(index).get(col);                
+            for(int col = 0 ; col < mConfusionMap.size(); col++) {
+                val+= mConfusionMap.get(index).get(col);                
             }            
             totalValMat.add(val);
             //System.out.println("Confusion Matrix :" + confusionMap.get(index));            
         }
         
-        for(int index = 0 ; index < confusionMap.size(); index++) {
-            for(int col = 0 ; col < confusionMap.size(); col++) {
-                System.out.print(String.format("%6.2f ",((double)(confusionMap.get(index).get(col)) / totalValMat.get(index) * 100)));            
+        for(int index = 0 ; index < mConfusionMap.size(); index++) {
+            for(int col = 0 ; col < mConfusionMap.size(); col++) {
+                System.out.print(String.format("%6.2f ",((double)(mConfusionMap.get(index).get(col)) / totalValMat.get(index) * 100)));            
             }
             System.out.println(" ");
         }    
     }
     
-    static void applyOnTestData(String filename) throws IOException {
+    void applyOnData(String filename) throws IOException {
         //For testing
         filename = filename;
         File file = new File(filename);
@@ -152,38 +157,20 @@ public class PerceptronEmailClassification {
         }        
         
         System.out.println("The Correctly classified classes are "+ mAccuracy); 
-        System.out.println("The accuracy is "+ mAccuracy * 1.0/totalTestEntries);
-    
+        System.out.println("The accuracy is "+ mAccuracy * 1.0/totalTestEntries);    
     }
     
-    static void checkAccuracy(ArrayList<Integer> linesToProcess, int correctClass) {
-        ArrayList<Double> values = new ArrayList<>();
-        for(int key = 0; key < mNumOfClasses; key++) {
-            ArrayList<Double> weightVector =  mweightVectorMap.get(key);            
-            double value = 0;
-            
-            for(int x = 0; x < linesToProcess.size(); x++){                                
-                value = value + (weightVector.get(x) * linesToProcess.get(x));                
-            }
-            values.add(value);
-        }   
-
-        double max = -1;int cls = 0;
-        for(int i = 0; i < mNumOfClasses; i++) {            
-            if(values.get(i) > max) {
-                max = values.get(i);
-                cls = i;
-            }
-        }
+    void checkAccuracy(ArrayList<Integer> linesToProcess, int correctClass) {
+        int cls = giveClassifiedClass(linesToProcess);
                
         if(correctClass == cls) {
             mAccuracy++;
         }        
         
-        if(confusionMap.containsKey(correctClass)) {                    
-            ArrayList<Integer> confusionVals =confusionMap.get(correctClass);
+        if(mConfusionMap.containsKey(correctClass)) {                    
+            ArrayList<Integer> confusionVals =mConfusionMap.get(correctClass);
             confusionVals.set(cls, confusionVals.get(cls) + 1);
-            confusionMap.put(correctClass, confusionVals);
+            mConfusionMap.put(correctClass, confusionVals);
         }
         else {
             ArrayList<Integer> confusionVals = new ArrayList<>(mNumOfClasses);
@@ -191,15 +178,11 @@ public class PerceptronEmailClassification {
                confusionVals.add(0);
 
             confusionVals.set(cls, 1);
-            confusionMap.put(correctClass, confusionVals);
-        }                         
-        
+            mConfusionMap.put(correctClass, confusionVals);
+        }                                 
     }
     
-    public static void processClass(ArrayList<Integer> linesToProcess, int correctClass){         
-        mTValue++;
-        mAlphaFactor =  (1000 * 1.0/ (1000 + mTValue));
-        
+    int giveClassifiedClass(ArrayList<Integer> linesToProcess) {
         ArrayList<Double> values = new ArrayList<>();
         for(int key = 0; key < mNumOfClasses; key++) {
             ArrayList<Double> weightVector =  mweightVectorMap.get(key);
@@ -220,8 +203,15 @@ public class PerceptronEmailClassification {
                 cls = i;
             }
         }
-        //System.out.println("Actual CLass :" + correctClass);
-        //System.out.println("Predicted CLass :" + cls);
+        return cls;
+    }
+    
+    void processClass(ArrayList<Integer> linesToProcess, int correctClass){                 
+        
+        mTValue++;
+        mAlphaFactor =  (1000 * 1.0/ (1000 + mTValue));
+        
+        int cls = giveClassifiedClass(linesToProcess);
         
         if(correctClass != cls) {            
             ArrayList<Double> weightVector =  mweightVectorMap.get(correctClass);
@@ -239,7 +229,7 @@ public class PerceptronEmailClassification {
         }
     }
     
-    static void initializeVectorMaps() {
+    void initializeVectorMaps() {
         Random ran = new Random();
         ArrayList<Double> randArr;
         for(int i =0; i < mNumOfClasses; i ++) {            
@@ -251,6 +241,5 @@ public class PerceptronEmailClassification {
             }
             mweightVectorMap.put(i, randArr);            
         }
-    }
-    
+    }    
 }
